@@ -1,9 +1,9 @@
 import {Command, flags} from '@oclif/command'
 import Ajv from 'ajv-draft-04'
+import addFormats from 'ajv-formats'
 import {readFileSync} from 'fs'
 import path from 'path'
 import {load} from 'js-yaml'
-import { strict } from 'assert'
 
 class ApigwModelValidator extends Command {
   static description = 'Validate your json object against an OpenAPI definition'
@@ -16,11 +16,9 @@ class ApigwModelValidator extends Command {
     schema: flags.string({char: 's', description: 'path to openapi definition'}),
     // flag with a value (-m, --model=VALUE)
     model: flags.string({char: 'm', description: 'model to validate your payload against'}),
-    // flag with a value (-p, --payload=VALUE)
-    payload: flags.string({char: 'p', description: 'payload to validate against the model'}),
   }
 
-  static args = [{name: 'file'}]
+  static args = [{name: 'payload'}]
 
   openapi: any | undefined
 
@@ -31,29 +29,47 @@ class ApigwModelValidator extends Command {
   validator: any | undefined
 
   ajv = new Ajv({
-    strict: false
+    strict: false,
   });
 
   async run() {
-    const {flags} = this.parse(ApigwModelValidator)
-    if (flags.schema) console.log(`--schema is: ${flags.schema}`)
-    if (flags.model) console.log(`--model is: ${flags.model}`)
-    if (flags.payload) console.log(`--payload is set`)
+    const {args, flags} = this.parse(ApigwModelValidator)
+    if (flags.schema) this.log(`--schema is: ${flags.schema}`)
+    if (flags.model) this.log(`--model is: ${flags.model}`)
 
-     this.createValidator(flags.schema, flags.model)
-
-     if (this.validator(flags.payload)) this.log(this.validator.errors)
+    await this.loadOpenAPIDefs(flags.schema)
+    await this.createValidator(flags.model)
+    await this.readPayload(args.payload)
+    // console.log(this.ajv.schemas)
+    // this.log(this.validator)
+    const answer = this.validator(this.payload)
+    if (!answer) {
+      this.log(this.validator.errors)
+    } else {
+      this.log('Payload passed validation')
+    }
   }
 
-  async createValidator(schema: any, model: any) {
+  async loadOpenAPIDefs(schema: any) {
+    this.openapi = load(readFileSync(path.resolve(process.cwd(), schema), 'utf8'))
+  }
+
+  async createValidator(model: any) {
     // Loads an OpenAPI Definition from the filepath
-    const openapi = load(readFileSync(path.resolve(__dirname, schema), 'utf8'))
-    this.openapi = openapi
-    this.schemas = this.openapi.components.schemas
-    this.validator = this.ajv.compile(this.openapi)
+    addFormats(this.ajv)
+    const schemaList = this.openapi.components.schemas
+    for (const property in schemaList) {
+      // this.log(`${property}: ${schemaList[property]}`)
+      const schema_model = schemaList[property]
+      schema_model.id = `https://example.com/schema.json#/components/schemas/${property}`
+      this.ajv.addSchema(schemaList[property])
+    }
+
+    this.validator = this.ajv.compile(schemaList[model])
   }
+
   async readPayload(payload: any) {
-    this.payload = load(readFileSync(path.resolve(__dirname, payload), 'utf8'))
+    this.payload = load(readFileSync(path.resolve(process.cwd(), payload), 'utf8'))
   }
 }
 
