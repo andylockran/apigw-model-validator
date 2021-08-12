@@ -43,10 +43,10 @@ class ApigwModelValidator extends Command {
     // console.log(this.ajv.schemas)
     // this.log(this.validator)
     const answer = this.validator(this.payload)
-    if (!answer) {
-      this.log(this.validator.errors)
-    } else {
+    if (answer) {
       this.log('Payload passed validation')
+    } else {
+      this.log(this.validator.errors)
     }
   }
 
