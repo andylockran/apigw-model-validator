@@ -7,4 +7,5 @@
 /yarn.lock
 node_modules
 example.json
+payload.json
 schema/*
