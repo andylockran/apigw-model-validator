@@ -49,7 +49,7 @@ class ApigwModelValidator extends Command {
 
     await this.loadOpenAPISchema(flags.schema)
 
-    await this.createValidator(flags.model)
+    await this.createValidator()
     await this.readPayload(args.payload)
 
     if (flags.model) {
@@ -69,7 +69,7 @@ class ApigwModelValidator extends Command {
     }
   }
 
-  async createValidator(model: any) {
+  async createValidator() {
     // Loads an OpenAPI Definition from the filepath
     addFormats(this.ajv)
     const schemaList = this.openapi.components.schemas
@@ -107,7 +107,7 @@ class ApigwModelValidator extends Command {
   async validatePath(path: any, requestMethod: any) {
     const urlPath = this.openapi.paths[path]
     const method = requestMethod.toLowerCase()
-    const schemaDef = urlPath[method].requestBody.content['application/json'].schema['$ref'].split("/")
+    const schemaDef = urlPath[method].requestBody.content['application/json'].schema.$ref.split('/')
     const model = schemaDef[schemaDef.length - 1]
     this.validateModel(model)
     return true
