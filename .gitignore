@@ -9,3 +9,5 @@ node_modules
 example.json
 payload.json
 schema/*
+coverage/
+tsconfig.tsbuildinfo
