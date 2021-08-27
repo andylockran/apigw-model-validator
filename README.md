@@ -18,7 +18,7 @@ $ npm install -g apigw-model-validator
 $ apigw-model-validator COMMAND
 running command...
 $ apigw-model-validator (-v|--version|version)
-apigw-model-validator/0.0.1 darwin-x64 node-v12.18.3
+apigw-model-validator/1.0.0 darwin-x64 node-v12.18.3
 $ apigw-model-validator --help [COMMAND]
 USAGE
   $ apigw-model-validator COMMAND
