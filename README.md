@@ -24,4 +24,38 @@ USAGE
   $ apigw-model-validator COMMAND
 ...
 ```
+
+```
+const AMV = require('apigw-model-validator')
+const validator = new AMV()
+
+validator.isPayloadValid({
+  model: 'UserDetails',
+  payload: {
+    username: 'Joe Bloggs'
+  },
+  schema: './user.yml'
+})
+  .then(() => {
+    console.log('Payload is valid)
+  })
+  .catch(err => {
+    console.error('Payload is invalid, err)
+  })
+
+validator.isPayloadValid({
+  path: '/app/use-details',
+  payload: {
+    username: 'Joe Bloggs'
+  },
+  requestMethod: 'POST',
+  schema: './user.yml'
+})
+  .then(() => {
+    console.log('Payload is valid)
+  })
+  .catch(err => {
+    console.error('Payload is invalid, err)
+  })
+```
 <!-- usagestop -->
