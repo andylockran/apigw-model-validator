@@ -6,6 +6,22 @@ import path from 'path'
 import {load} from 'js-yaml'
 import fs from 'fs'
 
+interface IsPayloadValidBaseOptions {
+  payload: any | any[] | string;
+  schema: string;
+}
+
+interface IsPayloadValidByModelOptions extends IsPayloadValidBaseOptions {
+  model: string;
+}
+
+interface IsPayloadValidByPathOptions extends IsPayloadValidBaseOptions {
+  path: string;
+  requestMethod: string;
+}
+
+type IsPayloadValidOptions = IsPayloadValidByModelOptions | IsPayloadValidByPathOptions;
+
 class ApigwModelValidator extends Command {
   static description = 'Validate your json object against an OpenAPI definition'
 
@@ -60,6 +76,107 @@ class ApigwModelValidator extends Command {
     }
   }
 
+  async isPayloadValid(options: IsPayloadValidOptions) {
+    if ((options as IsPayloadValidByModelOptions).model) {
+      return this.isPayloadValidByModel(options as IsPayloadValidByModelOptions)
+    }
+
+    if ((options as IsPayloadValidByPathOptions).path) {
+      return this.isPayloadValidByPath(options as IsPayloadValidByPathOptions)
+    }
+
+    throw new Error('Either model or path must be provided')
+  }
+
+  private async isPayloadValidByModel(options: IsPayloadValidByModelOptions) {
+    const {
+      model,
+      payload,
+      schema,
+    } = options
+
+    if (!model) {
+      throw new Error('A model must be provided')
+    }
+
+    if (!payload) {
+      throw new Error('A payload must be provided')
+    }
+
+    if (!schema) {
+      throw new Error('A schema must be provided')
+    }
+
+    await this.loadOpenAPISchema(schema)
+
+    await this.createValidator()
+    await this.readPayload(payload)
+    const answer = await this.validateModel(model)
+
+    if (answer) {
+      this.reset()
+
+      return []
+    }
+
+    const errors = this.validator.errors
+
+    this.reset()
+
+    throw errors
+  }
+
+  private async isPayloadValidByPath(options: IsPayloadValidByPathOptions) {
+    const {
+      path,
+      payload,
+      requestMethod,
+      schema,
+    } = options
+
+    if (!path) {
+      throw new Error('A path must be provided')
+    }
+
+    if (!payload) {
+      throw new Error('A payload must be provided')
+    }
+
+    if (!schema) {
+      throw new Error('A schema must be provided')
+    }
+
+    if (path && !requestMethod) {
+      throw new Error('A requestMethodmust be provided')
+    }
+
+    await this.loadOpenAPISchema(schema)
+
+    await this.createValidator()
+    await this.readPayload(payload)
+    const answer = await this.validatePath(path, requestMethod)
+
+    if (answer) {
+      this.reset()
+
+      return []
+    }
+
+    const errors = this.validator.errors
+
+    this.reset()
+
+    throw errors
+  }
+
+  private reset() {
+    this.ajv = new Ajv({
+      strict: false,
+    })
+    this.payload = undefined
+    this.validator = undefined
+  }
+
   async loadOpenAPISchema(schema: any) {
     const openapifile: string = path.resolve(process.cwd(), schema)
     if (fs.existsSync(openapifile)) {
@@ -83,6 +200,11 @@ class ApigwModelValidator extends Command {
   }
 
   async readPayload(payload: any) {
+    if (typeof payload === 'object') {
+      this.payload = payload
+      return
+    }
+
     const payloadfile = path.resolve(process.cwd(), payload)
     if (fs.existsSync(payloadfile)) {
       this.payload = load(readFileSync(payloadfile, 'utf8'))
@@ -102,6 +224,8 @@ class ApigwModelValidator extends Command {
     } else {
       this.log(this.validator.errors)
     }
+
+    return answer
   }
 
   async validatePath(path: any, requestMethod: any) {
@@ -109,8 +233,7 @@ class ApigwModelValidator extends Command {
     const method = requestMethod.toLowerCase()
     const schemaDef = urlPath[method].requestBody.content['application/json'].schema.$ref.split('/')
     const model = schemaDef[schemaDef.length - 1]
-    this.validateModel(model)
-    return true
+    return this.validateModel(model)
   }
 }
 
