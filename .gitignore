@@ -11,3 +11,4 @@ payload.json
 schema/*
 coverage/
 tsconfig.tsbuildinfo
+/.gemini/
